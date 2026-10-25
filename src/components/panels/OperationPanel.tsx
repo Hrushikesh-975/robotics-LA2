@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { useDobotStore, EndEffectorType } from '@/lib/store/useDobotStore';
-import { ROBOT_LIMITS } from '@/lib/kinematics';
+import { useDobotStore } from '@/lib/store/useDobotStore';
+import { ROBOT_LIMITS, EndEffectorType } from '@/lib/kinematics';
 import {
   ChevronUp,
   ChevronDown,
@@ -222,12 +222,13 @@ export const OperationPanel: React.FC = () => {
         </div>
 
         {/* Accessory Radio Selector */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-4 gap-2">
           {(
             [
               { id: 'suction', label: 'Suction Cup', icon: <CircleDot className="w-4 h-4" /> },
               { id: 'gripper', label: 'Gripper', icon: <Scissors className="w-4 h-4" /> },
               { id: 'laser', label: 'Laser Module', icon: <Sparkles className="w-4 h-4" /> },
+              { id: 'pen', label: 'Pen Holder', icon: <HelpCircle className="w-4 h-4" /> },
             ] as { id: EndEffectorType; label: string; icon: React.ReactNode }[]
           ).map((tool) => (
             <button
@@ -243,7 +244,7 @@ export const OperationPanel: React.FC = () => {
               }`}
             >
               <div className="mb-1 text-dobot-accent">{tool.icon}</div>
-              <span>{tool.label}</span>
+              <span className="truncate w-full text-center">{tool.label}</span>
             </button>
           ))}
         </div>

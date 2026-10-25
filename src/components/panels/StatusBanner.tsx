@@ -2,11 +2,16 @@
 
 import React, { useEffect } from 'react';
 import { useDobotStore } from '@/lib/store/useDobotStore';
-import { AlertTriangle, Info, CheckCircle, X } from 'lucide-react';
+import { AlertTriangle, Info, X } from 'lucide-react';
 
 export const StatusBanner: React.FC = () => {
-  const { jogWarning, setJogWarning, suctionHint, setSuctionHint, isEmergencyStopped } =
-    useDobotStore();
+  const {
+    jogWarning,
+    setJogWarning,
+    statusNotification,
+    setStatusNotification,
+    isEmergencyStopped,
+  } = useDobotStore();
 
   useEffect(() => {
     if (jogWarning && !isEmergencyStopped) {
@@ -18,15 +23,15 @@ export const StatusBanner: React.FC = () => {
   }, [jogWarning, isEmergencyStopped, setJogWarning]);
 
   useEffect(() => {
-    if (suctionHint) {
+    if (statusNotification) {
       const timer = setTimeout(() => {
-        setSuctionHint(null);
+        setStatusNotification(null);
       }, 4000);
       return () => clearTimeout(timer);
     }
-  }, [suctionHint, setSuctionHint]);
+  }, [statusNotification, setStatusNotification]);
 
-  if (!jogWarning && !suctionHint) return null;
+  if (!jogWarning && !statusNotification) return null;
 
   return (
     <div className="px-4 py-2 space-y-1.5 shrink-0 z-20">
@@ -35,7 +40,7 @@ export const StatusBanner: React.FC = () => {
         <div
           className={`flex items-center justify-between px-3 py-2 rounded-md text-xs border transition-all ${
             isEmergencyStopped
-              ? 'bg-dobot-danger/20 border-dobot-danger/60 text-dobot-danger font-semibold'
+              ? 'bg-[#ff4d4f]/20 border-[#ff4d4f]/60 text-[#ff4d4f] font-semibold'
               : 'bg-amber-500/15 border-amber-500/40 text-amber-300'
           }`}
         >
@@ -46,7 +51,7 @@ export const StatusBanner: React.FC = () => {
           {!isEmergencyStopped && (
             <button
               onClick={() => setJogWarning(null)}
-              className="text-dobot-muted hover:text-white p-0.5"
+              className="text-[#8c9ba5] hover:text-white p-0.5"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -54,16 +59,16 @@ export const StatusBanner: React.FC = () => {
         </div>
       )}
 
-      {/* Suction / Tool Action Hint */}
-      {suctionHint && !jogWarning && (
-        <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-dobot-accent/15 border border-dobot-accent/40 text-sky-300">
+      {/* Status Notification / Tool Action Hint */}
+      {statusNotification && !jogWarning && (
+        <div className="flex items-center justify-between px-3 py-2 rounded-md text-xs bg-[#1890ff]/15 border border-[#1890ff]/40 text-sky-300">
           <div className="flex items-center gap-2">
-            <Info className="w-4 h-4 text-dobot-accent shrink-0" />
-            <span>{suctionHint}</span>
+            <Info className="w-4 h-4 text-[#1890ff] shrink-0" />
+            <span>{statusNotification}</span>
           </div>
           <button
-            onClick={() => setSuctionHint(null)}
-            className="text-dobot-muted hover:text-white p-0.5"
+            onClick={() => setStatusNotification(null)}
+            className="text-[#8c9ba5] hover:text-white p-0.5"
           >
             <X className="w-3.5 h-3.5" />
           </button>

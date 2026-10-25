@@ -9,7 +9,7 @@ export interface CartesianPose {
   x: number; // mm
   y: number; // mm
   z: number; // mm
-  r: number; // degrees: End effector rotation
+  r: number; // degrees: World yaw angle of tool
 }
 
 export interface RobotLimits {
@@ -20,9 +20,23 @@ export interface RobotLimits {
 }
 
 export interface RobotDimensions {
-  baseHeight: number;       // L0: ~138 mm
-  rearArmLength: number;    // L1: ~135 mm
-  forearmLength: number;    // L2: ~147 mm
-  toolOffsetR: number;      // L3: ~60 mm (horizontal forward wrist-to-tool)
-  toolOffsetZ: number;      // L4: ~70 mm (vertical drop wrist-to-tip)
+  baseHeight: number;       // L0: 138 mm
+  rearArmLength: number;    // L1: 135 mm
+  forearmLength: number;    // L2: 147 mm
+  toolOffsetR: number;      // L3: 60 mm (horizontal forward wrist-to-tool)
+  toolOffsetZ: number;      // L4: 70 mm (vertical drop wrist-to-tip default suction)
 }
+
+export type EndEffectorType = 'suction' | 'gripper' | 'laser' | 'pen';
+
+export interface ToolOffset {
+  offsetR: number;
+  offsetZ: number;
+}
+
+export const TOOL_OFFSETS: Record<EndEffectorType, ToolOffset> = {
+  suction: { offsetR: 60, offsetZ: 70 },
+  gripper: { offsetR: 60, offsetZ: 72 },
+  laser: { offsetR: 60, offsetZ: 65 },
+  pen: { offsetR: 60, offsetZ: 68 },
+};

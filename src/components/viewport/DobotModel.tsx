@@ -50,16 +50,21 @@ export const DobotModel: React.FC = () => {
     metalness: 0.9,
   });
   const matBlackRubber = new THREE.MeshStandardMaterial({
-    color: '#111317',
-    roughness: 0.8,
-    metalness: 0.1,
+    color: '#1a1d24',
+    roughness: 0.85,
+    metalness: 0.05,
   });
-  const matSuctionSilicone = new THREE.MeshStandardMaterial({
-    color: endEffectorActive ? '#ff4d4f' : '#faad14',
-    roughness: 0.4,
-    metalness: 0.1,
-    transparent: true,
-    opacity: 0.9,
+  // Realistic industrial NBR nitrile suction rubber
+  const matSuctionRubber = new THREE.MeshStandardMaterial({
+    color: endEffectorActive ? '#15171c' : '#22262f',
+    roughness: 0.9,
+    metalness: 0.05,
+  });
+  // Brass / gold pneumatic threaded connector fitting
+  const matBrassFitting = new THREE.MeshStandardMaterial({
+    color: '#cca048',
+    roughness: 0.25,
+    metalness: 0.85,
   });
 
   useFrame((_, delta) => {
@@ -91,14 +96,11 @@ export const DobotModel: React.FC = () => {
 
     // 3. Forearm pitch:
     // Forearm is connected at elbow: local position [0, L1, 0] along rear arm.
-    // In Dobot Magician parallelogram mechanism:
-    // Forearm angle is j3Rad relative to horizontal.
-    // Inside the rear arm's coordinate frame (rotated by j2Rad),
-    // the local rotation of forearm must be: (-(j2Rad) - (PI/2 - j3Rad)) = j3Rad - j2Rad - PI/2.
-    // To keep it intuitive:
-    // In rearArmRef coordinate frame, when rear arm tilts by j2Rad, the forearm rotation counteracts j2Rad:
+    // In Dobot Magician kinematics, forearm angle relative to horizontal is j3Rad (downwards).
+    // In rearArmRef coordinate frame (which is already rotated by j2Rad),
+    // the local rotation of forearm must be: j3Rad - j2Rad.
     if (forearmRef.current) {
-      forearmRef.current.rotation.x = -j2Rad + (Math.PI / 2 - j3Rad);
+      forearmRef.current.rotation.x = j3Rad - j2Rad;
     }
 
     // 4. Parallelogram rods to keep wrist level
@@ -109,8 +111,8 @@ export const DobotModel: React.FC = () => {
 
     // 5. Wrist: parallelogram keeps wrist always vertical regardless of arm angles
     if (wristRef.current) {
-      // Counteracts forearm angle so tool bracket is always oriented plumb/level
-      wristRef.current.rotation.x = -(Math.PI / 2 - j3Rad);
+      // Counteracts the net forearm pitch so the tool is always oriented plumb/level
+      wristRef.current.rotation.x = -j3Rad;
     }
 
     // 6. Tool rotation (Joint 4 / R)
@@ -249,32 +251,76 @@ export const DobotModel: React.FC = () => {
                     <cylinderGeometry args={[12, 14, 12, 24]} />
                   </mesh>
 
-                  {/* ---------------- SUCTION CUP END EFFECTOR (L4 = 70 mm drop) ---------------- */}
+                  {/* ---------------- REALISTIC MECHANICAL SUCTION CUP END EFFECTOR (L4 = 70 mm drop) ---------------- */}
                   {endEffectorType === 'suction' && (
                     <group position={[0, -6, 0]}>
-                      {/* Chrome suction extension tube */}
-                      <mesh position={[0, -26, 0]} material={matSilver} castShadow>
-                        <cylinderGeometry args={[3.5, 3.5, 52, 24]} />
+                      {/* Upper quick-mount hex nut fitting */}
+                      <mesh position={[0, -2, 0]} material={matBrassFitting} castShadow>
+                        <cylinderGeometry args={[7, 7, 4, 6]} />
                       </mesh>
-                      {/* Pneumatic tube clamp */}
-                      <mesh position={[0, -10, 0]} material={matCharcoal}>
-                        <cylinderGeometry args={[7, 7, 8, 24]} />
+
+                      {/* Precision stainless-steel vacuum stem tube */}
+                      <mesh position={[0, -21, 0]} material={matSilver} castShadow>
+                        <cylinderGeometry args={[2.5, 2.5, 36, 24]} />
                       </mesh>
-                      {/* Flexible silicone bellows suction cup */}
-                      <group position={[0, -58, 0]}>
-                        <mesh position={[0, 0, 0]} material={matSuctionSilicone} castShadow>
-                          <cylinderGeometry args={[10, 14, 10, 32]} />
+
+                      {/* Pneumatic tube barb connector collar */}
+                      <mesh position={[0, -12, 0]} material={matBrassFitting}>
+                        <cylinderGeometry args={[4.5, 4.5, 6, 24]} />
+                      </mesh>
+
+                      {/* Lower suction nozzle adapter housing */}
+                      <mesh position={[0, -40, 0]} material={matSilver} castShadow>
+                        <cylinderGeometry args={[5, 6, 8, 24]} />
+                      </mesh>
+
+                      {/* Hex locknut securing rubber cup */}
+                      <mesh position={[0, -44, 0]} material={matBrassFitting}>
+                        <cylinderGeometry args={[6, 6, 2.5, 6]} />
+                      </mesh>
+
+                      {/* ---------------- INDUSTRIAL SUCTION NOZZLE (BELLOWS & HOLLOW CUP: lip at -70mm) ---------------- */}
+                      <group position={[0, -45, 0]}>
+                        {/* Upper neck convolution */}
+                        <mesh position={[0, -3, 0]} material={matSuctionRubber} castShadow>
+                          <cylinderGeometry args={[4.5, 7.5, 4, 32]} />
                         </mesh>
-                        <mesh position={[0, -6, 0]} material={matSuctionSilicone} castShadow>
-                          <cylinderGeometry args={[14, 16, 6, 32]} />
+
+                        {/* Middle bellows expansion ring */}
+                        <mesh position={[0, -6, 0]} material={matSuctionRubber} castShadow>
+                          <cylinderGeometry args={[7.5, 9, 3, 32]} />
                         </mesh>
-                        {/* Suction active indicator glow ring */}
-                        {endEffectorActive && (
-                          <mesh position={[0, -10, 0]}>
-                            <ringGeometry args={[6, 16, 32]} />
-                            <meshBasicMaterial color="#00ff66" side={THREE.DoubleSide} />
-                          </mesh>
-                        )}
+
+                        {/* Main flared suction cup body tapering to rim */}
+                        <mesh position={[0, -10, 0]} material={matSuctionRubber} castShadow>
+                          <cylinderGeometry args={[9, 13.5, 6, 32]} />
+                        </mesh>
+
+                        {/* Flexible sealing lip (outer rim at L4 = 70mm from wrist) */}
+                        <mesh position={[0, -13, 0]} material={matSuctionRubber} castShadow>
+                          <cylinderGeometry args={[13.5, 14, 2, 32]} />
+                        </mesh>
+
+                        {/* Inner recessed hollow vacuum cavity (actual physical depression) */}
+                        <mesh position={[0, -13.2, 0]}>
+                          <cylinderGeometry args={[10.5, 7, 2.5, 32]} />
+                          <meshStandardMaterial color="#0b0d11" roughness={0.95} />
+                        </mesh>
+
+                        {/* Central vacuum orifice hole */}
+                        <mesh position={[0, -13.5, 0]}>
+                          <cylinderGeometry args={[2.5, 2.5, 2.2, 24]} />
+                          <meshBasicMaterial color="#000000" />
+                        </mesh>
+
+                        {/* Subtle Active Vacuum Indicator Ring (tasteful, non-distracting) */}
+                        <mesh position={[0, -1, 0]}>
+                          <ringGeometry args={[4.6, 5.2, 24]} />
+                          <meshBasicMaterial
+                            color={endEffectorActive ? '#10b981' : '#374151'}
+                            side={THREE.DoubleSide}
+                          />
+                        </mesh>
                       </group>
                     </group>
                   )}
@@ -341,6 +387,36 @@ export const DobotModel: React.FC = () => {
                       )}
                     </group>
                   )}
+
+                  {/* ---------------- PEN HOLDER END EFFECTOR ---------------- */}
+                  {endEffectorType === 'pen' && (
+                    <group position={[0, -6, 0]}>
+                      {/* Pen clamp bracket */}
+                      <mesh position={[0, -16, 0]} material={matCharcoal} castShadow>
+                        <cylinderGeometry args={[8, 9, 20, 24]} />
+                      </mesh>
+                      {/* Ballpoint / marker pen body */}
+                      <mesh position={[0, -36, 0]} material={matSilver} castShadow>
+                        <cylinderGeometry args={[4.5, 4.5, 40, 24]} />
+                      </mesh>
+                      {/* Pen tip cone */}
+                      <mesh position={[0, -58, 0]} material={matBlueAccent}>
+                        <cylinderGeometry args={[4.5, 0.5, 12, 24]} />
+                      </mesh>
+                      {/* Nib contact point */}
+                      <mesh position={[0, -64, 0]} material={matBlackRubber}>
+                        <sphereGeometry args={[1, 12, 12]} />
+                      </mesh>
+                    </group>
+                  )}
+
+                  {/* ---------------- TCP (Tool Center Point) GIZMO ---------------- */}
+                  <group position={[0, -64, 0]}>
+                    <mesh rotation={[-Math.PI / 2, 0, 0]}>
+                      <ringGeometry args={[1.5, 3.5, 16]} />
+                      <meshBasicMaterial color="#00ffff" side={THREE.DoubleSide} />
+                    </mesh>
+                  </group>
                 </group>
               </group>
             </group>

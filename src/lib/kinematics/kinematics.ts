@@ -1,11 +1,21 @@
-import { CartesianPose, JointAngles, RobotDimensions, RobotLimits } from './types';
+import {
+  CartesianPose,
+  JointAngles,
+  RobotDimensions,
+  RobotLimits,
+  EndEffectorType,
+  TOOL_OFFSETS,
+} from './types';
+
+export { TOOL_OFFSETS };
+export type { JointAngles, CartesianPose, RobotLimits, RobotDimensions, EndEffectorType };
 
 export const ROBOT_DIMENSIONS: RobotDimensions = {
   baseHeight: 138,      // mm: base mounting to shoulder joint (J2)
   rearArmLength: 135,   // mm: shoulder joint (J2) to elbow joint (J3)
   forearmLength: 147,   // mm: elbow joint (J3) to wrist joint
   toolOffsetR: 60,      // mm: horizontal offset from wrist to tool centerline
-  toolOffsetZ: 70,      // mm: vertical drop from wrist to suction cup tip
+  toolOffsetZ: 70,      // mm: vertical drop from wrist to tool tip (default suction)
 };
 
 export const ROBOT_LIMITS: RobotLimits = {
@@ -25,6 +35,21 @@ export const HOME_JOINTS: JointAngles = {
 
 const DEG_TO_RAD = Math.PI / 180;
 const RAD_TO_DEG = 180 / Math.PI;
+
+/**
+ * Helper to build custom RobotDimensions for a specific end-effector
+ */
+export function getDimensionsForTool(
+  tool: EndEffectorType = 'suction',
+  baseDims: RobotDimensions = ROBOT_DIMENSIONS
+): RobotDimensions {
+  const offset = TOOL_OFFSETS[tool] || TOOL_OFFSETS.suction;
+  return {
+    ...baseDims,
+    toolOffsetR: offset.offsetR,
+    toolOffsetZ: offset.offsetZ,
+  };
+}
 
 /**
  * Forward Kinematics for Dobot Magician 4-DOF
@@ -53,7 +78,7 @@ export function forwardKinematics(
     dims.forearmLength * Math.cos(theta3) +
     dims.toolOffsetR;
 
-  // Vertical height of suction cup tip above table
+  // Vertical height of tool tip above table
   const z =
     dims.baseHeight +
     dims.rearArmLength * Math.cos(theta2) -
@@ -135,7 +160,7 @@ export function inverseKinematics(
   // Direction angle psi of target wrist relative to horizontal in radial plane
   const psi = Math.atan2(deltaZ, deltaRho);
 
-  // Elbow-up branch:
+  // Elbow-up branch (standard for Dobot Magician):
   // phi2 is rear arm angle above horizontal: phi2 = psi + beta
   // theta2 is rear arm angle from vertical: theta2 = pi/2 - phi2
   const phi2 = psi + beta;
@@ -192,11 +217,73 @@ export function areJointsWithinLimits(
 }
 
 /**
+ * Validates reachability of target Cartesian coordinates.
+ * Returns null if reachable, or descriptive reason if unreachable.
+ */
+export function validateCartesianTarget(
+  x: number,
+  y: number,
+  z: number,
+  r: number = 0,
+  dims: RobotDimensions = ROBOT_DIMENSIONS,
+  limits: RobotLimits = ROBOT_LIMITS
+): { valid: boolean; reason?: string } {
+  const rho = Math.sqrt(x * x + y * y);
+  if (rho < 1e-4) {
+    return { valid: false, reason: 'Target is at base origin (singularity)' };
+  }
+
+  const j1 = Math.atan2(y, x) * RAD_TO_DEG;
+  if (j1 < limits.j1[0] || j1 > limits.j1[1]) {
+    return {
+      valid: false,
+      reason: `Base rotation J1 (${j1.toFixed(1)}°) exceeds limits [${limits.j1[0]}°, ${limits.j1[1]}°]`,
+    };
+  }
+
+  const deltaRho = rho - dims.toolOffsetR;
+  if (deltaRho < 0) {
+    return { valid: false, reason: 'Target radial distance is behind wrist offset' };
+  }
+
+  const deltaZ = z + dims.toolOffsetZ - dims.baseHeight;
+  const D = Math.sqrt(deltaRho * deltaRho + deltaZ * deltaZ);
+  const Dmax = dims.rearArmLength + dims.forearmLength;
+  const Dmin = Math.abs(dims.rearArmLength - dims.forearmLength);
+
+  if (D > Dmax) {
+    return {
+      valid: false,
+      reason: `Target is beyond maximum arm reach (${D.toFixed(1)}mm > ${Dmax.toFixed(1)}mm)`,
+    };
+  }
+  if (D < Dmin) {
+    return {
+      valid: false,
+      reason: `Target is inside inner mechanical deadzone (${D.toFixed(1)}mm < ${Dmin.toFixed(1)}mm)`,
+    };
+  }
+
+  const ik = inverseKinematics(x, y, z, r, dims, limits);
+  if (!ik) {
+    return {
+      valid: false,
+      reason: 'No inverse kinematics solution satisfies physical joint angle limits',
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
  * Computes the maximum and minimum reach radius at a given height Z
  */
 export function getWorkspaceBounds(dims: RobotDimensions = ROBOT_DIMENSIONS) {
   const maxRadius = dims.rearArmLength + dims.forearmLength + dims.toolOffsetR;
-  const minRadius = Math.max(dims.toolOffsetR, Math.abs(dims.rearArmLength - dims.forearmLength) + dims.toolOffsetR);
+  const minRadius = Math.max(
+    dims.toolOffsetR,
+    Math.abs(dims.rearArmLength - dims.forearmLength) + dims.toolOffsetR
+  );
   return {
     maxRadius,
     minRadius,
